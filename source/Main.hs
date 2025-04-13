@@ -16,11 +16,9 @@ loop window = do
 
 main :: IO ()
 main = do
-  {-
   result <- GLFW.init
   unless result $
     return ()
-  -}
   GLFW.withWindow "Game" GLFW.WindowSize{GLFW.width = 1280, GLFW.height = 720} $ \window ->
     loop window
   return ()
