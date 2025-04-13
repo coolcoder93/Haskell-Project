@@ -81,9 +81,8 @@ withWindow title windowSize body =
     glfwWindowHint glfwOpenGLProfile glfwOpenGLCoreProfile
     glfwWindowHint glfwContextVersionMajor 3
     glfwWindowHint glfwContextVersionMinor 3
-#ifdef __APPLE__
+#ifdef darwin_HOST_OS 
     glfwWindowHint glfwOpenGLForwardCompat glfwTrue
-#error SUCCESS!
 #endif
     window <-
       glfwCreateWindow
