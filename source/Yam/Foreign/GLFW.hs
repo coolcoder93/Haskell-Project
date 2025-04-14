@@ -59,9 +59,9 @@ type GLFWErrorFun = CInt -> CString -> IO ()
 type GLFWFramebufferResizeFun = GLFWWindow -> CInt -> CInt -> IO ()
 
 data Window = Window
-  { windowHandle :: GLFWWindow,
-    windowWidth :: Int,
-    windowHeight :: Int
+  { windowHandle :: GLFWWindow
+  , windowWidth :: Int
+  , windowHeight :: Int
   }
 
 glfwTrue :: CInt
@@ -144,7 +144,7 @@ withWindow title width height body =
 #ifdef GL_DEBUG
     glDebugSetup
 #endif
-    result <- body Window {windowHandle = window, windowWidth = width, windowHeight = height}
+    result <- body Window{windowHandle = window, windowWidth = width, windowHeight = height}
     glfwDestroyWindow window
     return result
 
