@@ -129,18 +129,18 @@ swapBuffers :: Window -> IO ()
 swapBuffers (Window handle) = glfwSwapBuffers handle
 
 #ifdef GL_DEBUG
-foreign import ccall "wrapper" wrapDebug :: GL.DebugProc -> IO (FunPtr GL.DebugProc)
+foreign import ccall "wrapper" mkDebugProc :: GL.DebugProc -> IO (FunPtr GL.DebugProc)
+
+debugProc _ debugType _ _  _ cMessage _ = do
+  message <- peekCString cMessage
+  printf "OpenGL: %s message: \"%s\"\n"
+    (if debugType == debugTypeError then "*OpenGL Error*" else "")
+    message
 
 glDebugSetup = do
-  debugProc <-
-    wrapDebug $
-    \_ debugType _ _  _ cMessage _ -> do
-      message <- peekCString cMessage
-      printf "OpenGL: %s message: \"%s\"\n"
-        (if debugType == debugTypeError then "*OpenGL Error*" else "")
-        message
+  funPtr <- mkDebugProc debugProc
   GL.enable GL.debugOutput
-  GL.debugMessageCallback debugProc nullPtr
+  GL.debugMessageCallback funPtr nullPtr
   where
     debugTypeError = 0x824c
 #endif
