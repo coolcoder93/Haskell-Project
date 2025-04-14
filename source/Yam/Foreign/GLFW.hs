@@ -132,6 +132,7 @@ swapBuffers (Window handle) = glfwSwapBuffers handle
 foreign import ccall "wrapper" mkDebugProc :: GL.DebugProc -> IO (FunPtr GL.DebugProc)
 
 debugProc _ debugType _ _  _ cMessage _ = do
+  let debugTypeError = 0x824c
   message <- peekCString cMessage
   printf "OpenGL: %s message: \"%s\"\n"
     (if debugType == debugTypeError then "*OpenGL Error*" else "")
@@ -141,6 +142,4 @@ glDebugSetup = do
   funPtr <- mkDebugProc debugProc
   GL.enable GL.debugOutput
   GL.debugMessageCallback funPtr nullPtr
-  where
-    debugTypeError = 0x824c
 #endif
