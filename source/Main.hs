@@ -21,4 +21,4 @@ main = do
     return ()
   GLFW.withWindow "Game" GLFW.WindowSize{GLFW.width = 1280, GLFW.height = 720} $ \window ->
     loop window
-  return ()
+  GLFW.terminate
