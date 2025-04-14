@@ -4,6 +4,7 @@
 module Yam.Foreign.GLFW
   ( Window
   , WindowSize (..)
+  , getError
   , Yam.Foreign.GLFW.init
   , terminate
   , withWindow
@@ -19,8 +20,9 @@ import Text.Printf (printf)
 
 import qualified Yam.Foreign.GL as GL
 
-foreign import ccall "GLFW/glfw3.h glfwSetErrorCallback" glfwSetErrorCallback :: GLFWErrorFun -> GLFWErrorFun
---foreign import ccall "GLFW/glfw3.h glfwGetError" glfwGetError ::
+foreign import ccall "GLFW/glfw3.h glfwSetErrorCallback" glfwSetErrorCallback :: FunPtr GLFWErrorFun -> IO (FunPtr GLFWErrorFun)
+foreign import ccall "GLFW/glfw3.h glfwGetError" glfwGetError :: Ptr CString -> IO CInt
+foreign import ccall "wrapper" mkGLFWErrorFun :: GLFWErrorFun -> IO (FunPtr GLFWErrorFun)
 
 foreign import ccall "GLFW/glfw3.h glfwInit" glfwInit :: IO CInt
 foreign import ccall "GLFW/glfw3.h glfwTerminate" terminate :: IO ()
@@ -38,7 +40,7 @@ foreign import ccall "GLFW/glfw3.h glfwPollEvents" pollEvents :: IO ()
 
 type GLFWWindow = Ptr ()
 type GLFWMonitor = Ptr ()
-type GLFWErrorFun = FunPtr (CInt -> CString -> IO ())
+type GLFWErrorFun = CInt -> CString -> IO ()
 
 newtype Window = Window GLFWWindow
 
@@ -68,10 +70,27 @@ glfwContextVersionMinor = 0x00022003
 glfwOpenGLForwardCompat :: CInt
 glfwOpenGLForwardCompat = 0x00022006
 
+getError :: IO (Maybe String)
+getError = alloca $ \ptr -> do
+  let noError = 0
+  errorCode <- glfwGetError ptr
+  if errorCode == noError
+    then return Nothing
+    else do
+      cMessage <- peek ptr
+      message <- peekCString cMessage
+      return (Just message)
+
+errorCallback :: Int -> String -> IO ()
+errorCallback = printf "GLFW Error %d: %s\n"
+
 init :: IO Bool
 init = do
-  -- TODO: Implement error callback
-  --glfwSetErrorCallback (\x y -> do return ())
+  let cErrorCallback errorCode cMessage = do
+        message <- peekCString cMessage
+        errorCallback (fromIntegral errorCode) message
+  funPtr <- (mkGLFWErrorFun cErrorCallback)
+  _ <- glfwSetErrorCallback funPtr
   result <- glfwInit
   return (result == glfwTrue)
 
@@ -81,7 +100,7 @@ withWindow title windowSize body =
     glfwWindowHint glfwOpenGLProfile glfwOpenGLCoreProfile
     glfwWindowHint glfwContextVersionMajor 3
     glfwWindowHint glfwContextVersionMinor 3
-#ifdef darwin_HOST_OS 
+#ifdef darwin_HOST_OS
     glfwWindowHint glfwOpenGLForwardCompat glfwTrue
 #endif
     window <-
