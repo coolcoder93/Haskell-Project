@@ -17,7 +17,7 @@ import Foreign.C
 import Control.Monad
 import Text.Printf (printf)
 
-import Yam.Foreign.GL qualified as GL
+import qualified Yam.Foreign.GL as GL
 
 foreign import ccall "GLFW/glfw3.h glfwSetErrorCallback" glfwSetErrorCallback :: FunPtr GLFWErrorFun -> IO (FunPtr GLFWErrorFun)
 
@@ -134,7 +134,10 @@ withWindow title width height body =
         nullPtr
         nullPtr
     when (window == nullPtr) $ do
-      error "GLFW: Failed to create window"
+      result <- getError
+      case result of
+        Just message -> error ("GLFW: Failed to create window. Message: " ++ message)
+        Nothing -> error "GLFW: Failed to create window."
     glfwMakeContextCurrent window
     GL.viewport 0 0 (fromIntegral width) (fromIntegral height)
     let cFramebufferResizeCallback _ newWidth newHeight = do
