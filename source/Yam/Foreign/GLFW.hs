@@ -3,7 +3,6 @@
 
 module Yam.Foreign.GLFW
   ( Window
-  , WindowSize (..)
   , getError
   , Yam.Foreign.GLFW.init
   , terminate
@@ -18,35 +17,51 @@ import Foreign.C
 import Control.Monad
 import Text.Printf (printf)
 
-import qualified Yam.Foreign.GL as GL
+import Yam.Foreign.GL qualified as GL
 
 foreign import ccall "GLFW/glfw3.h glfwSetErrorCallback" glfwSetErrorCallback :: FunPtr GLFWErrorFun -> IO (FunPtr GLFWErrorFun)
+
 foreign import ccall "GLFW/glfw3.h glfwGetError" glfwGetError :: Ptr CString -> IO CInt
+
 foreign import ccall "wrapper" mkGLFWErrorFun :: GLFWErrorFun -> IO (FunPtr GLFWErrorFun)
 
 foreign import ccall "GLFW/glfw3.h glfwInit" glfwInit :: IO CInt
+
 foreign import ccall "GLFW/glfw3.h glfwTerminate" terminate :: IO ()
 
 foreign import ccall "GLFW/glfw3.h glfwWindowHint" glfwWindowHint :: CInt -> CInt -> IO ()
 
 foreign import ccall "GLFW/glfw3.h glfwCreateWindow"
   glfwCreateWindow :: CInt -> CInt -> CString -> GLFWMonitor -> GLFWWindow -> IO GLFWWindow
+
 foreign import ccall "GLFW/glfw3.h glfwDestroyWindow" glfwDestroyWindow :: GLFWWindow -> IO ()
 
+foreign import ccall "GLFW/glfw3.h glfwSetFramebufferSizeCallback"
+  glfwSetFramebufferSizeCallback :: GLFWWindow -> FunPtr GLFWFramebufferResizeFun -> IO (FunPtr GLFWFramebufferResizeFun)
+
+foreign import ccall "wrapper"
+  mkGLFWFramebufferResizeFun :: GLFWFramebufferResizeFun -> IO (FunPtr GLFWFramebufferResizeFun)
+
 foreign import ccall "GLFW/glfw3.h glfwMakeContextCurrent" glfwMakeContextCurrent :: GLFWWindow -> IO ()
+
 foreign import ccall "GLFW/glfw3.h glfwWindowShouldClose" glfwWindowShouldClose :: GLFWWindow -> IO CInt
+
 foreign import ccall "GLFW/glfw3.h glfwSwapBuffers" glfwSwapBuffers :: GLFWWindow -> IO ()
+
 foreign import ccall "GLFW/glfw3.h glfwPollEvents" pollEvents :: IO ()
 
 type GLFWWindow = Ptr ()
+
 type GLFWMonitor = Ptr ()
+
 type GLFWErrorFun = CInt -> CString -> IO ()
 
-newtype Window = Window GLFWWindow
+type GLFWFramebufferResizeFun = GLFWWindow -> CInt -> CInt -> IO ()
 
-data WindowSize = WindowSize
-  { width :: Int
-  , height :: Int
+data Window = Window
+  { windowHandle :: GLFWWindow,
+    windowWidth :: Int,
+    windowHeight :: Int
   }
 
 glfwTrue :: CInt
@@ -70,6 +85,9 @@ glfwContextVersionMinor = 0x00022003
 glfwOpenGLForwardCompat :: CInt
 glfwOpenGLForwardCompat = 0x00022006
 
+glfwResizable :: CInt
+glfwResizable = 0x00020003
+
 getError :: IO (Maybe String)
 getError = alloca $ \ptr -> do
   let noError = 0
@@ -89,14 +107,19 @@ init = do
   let cErrorCallback errorCode cMessage = do
         message <- peekCString cMessage
         errorCallback (fromIntegral errorCode) message
-  funPtr <- (mkGLFWErrorFun cErrorCallback)
+  funPtr <- mkGLFWErrorFun cErrorCallback
   _ <- glfwSetErrorCallback funPtr
   result <- glfwInit
   return (result == glfwTrue)
 
-withWindow :: String -> WindowSize -> (Window -> IO a) -> IO a
-withWindow title windowSize body =
+framebufferResizeCallback :: Int -> Int -> IO ()
+framebufferResizeCallback newWidth newHeight = do
+  GL.viewport 0 0 (fromIntegral newWidth) (fromIntegral newHeight)
+
+withWindow :: String -> Int -> Int -> (Window -> IO a) -> IO a
+withWindow title width height body =
   withCString title $ \cTitle -> do
+    glfwWindowHint glfwResizable glfwFalse
     glfwWindowHint glfwOpenGLProfile glfwOpenGLCoreProfile
     glfwWindowHint glfwContextVersionMajor 3
     glfwWindowHint glfwContextVersionMinor 3
@@ -105,28 +128,33 @@ withWindow title windowSize body =
 #endif
     window <-
       glfwCreateWindow
-        (fromIntegral (width windowSize))
-        (fromIntegral (height windowSize))
+        (fromIntegral width)
+        (fromIntegral height)
         cTitle
         nullPtr
         nullPtr
     when (window == nullPtr) $ do
       error "GLFW: Failed to create window"
     glfwMakeContextCurrent window
+    GL.viewport 0 0 (fromIntegral width) (fromIntegral height)
+    let cFramebufferResizeCallback _ newWidth newHeight = do
+          framebufferResizeCallback (fromIntegral newWidth) (fromIntegral newHeight)
+    funPtr <- mkGLFWFramebufferResizeFun cFramebufferResizeCallback
+    _ <- glfwSetFramebufferSizeCallback window funPtr
 #ifdef GL_DEBUG
     glDebugSetup
 #endif
-    result <- body (Window window)
+    result <- body Window {windowHandle = window, windowWidth = width, windowHeight = height}
     glfwDestroyWindow window
     return result
 
 windowShouldClose :: Window -> IO Bool
-windowShouldClose (Window handle) = do
-  result <- glfwWindowShouldClose handle
+windowShouldClose window = do
+  result <- glfwWindowShouldClose (windowHandle window)
   return (result == glfwTrue)
 
 swapBuffers :: Window -> IO ()
-swapBuffers (Window handle) = glfwSwapBuffers handle
+swapBuffers window = glfwSwapBuffers (windowHandle window)
 
 #ifdef GL_DEBUG
 foreign import ccall "wrapper" mkDebugProc :: GL.DebugProc -> IO (FunPtr GL.DebugProc)
