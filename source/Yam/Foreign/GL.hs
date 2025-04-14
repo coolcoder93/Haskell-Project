@@ -7,6 +7,7 @@ module Yam.Foreign.GL
   , clearColor
   , enable
   , genTextures
+  , viewport
 #ifdef GL_DEBUG
   , DebugProc
   , debugOutput
@@ -37,6 +38,7 @@ foreign import ccall "glClear" clear :: GLbitfield -> IO ()
 foreign import ccall "glClearColor" clearColor :: GLfloat -> GLfloat -> GLfloat -> GLfloat -> IO ()
 foreign import ccall "glEnable" enable :: GLenum -> IO ()
 foreign import ccall "glGenTextures" genTextures :: GLsizei -> Ptr GLuint -> IO GLuint
+foreign import ccall "glViewport" viewport :: GLint -> GLint -> GLsizei -> GLsizei -> IO ()
 
 #ifdef GL_DEBUG
 type DebugProc = GLenum -> GLenum -> GLuint -> GLenum -> GLsizei -> CString -> Ptr () -> IO ()

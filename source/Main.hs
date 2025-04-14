@@ -1,8 +1,9 @@
 module Main (main) where
 
+import Control.Monad
+
 import qualified Yam.Foreign.GL as GL
 import qualified Yam.Foreign.GLFW as GLFW
-import Control.Monad
 
 loop :: GLFW.Window -> IO ()
 loop window = do
@@ -19,6 +20,6 @@ main = do
   result <- GLFW.init
   unless result $
     return ()
-  GLFW.withWindow "Game" GLFW.WindowSize{GLFW.width = 1280, GLFW.height = 720} $ \window ->
+  GLFW.withWindow "Game" 1280 720 $ \window ->
     loop window
   GLFW.terminate
