@@ -19,36 +19,36 @@ import Text.Printf (printf)
 
 import qualified Yam.Foreign.GL as GL
 
-foreign import ccall "GLFW/glfw3.h glfwSetErrorCallback" glfwSetErrorCallback :: FunPtr GLFWErrorFun -> IO (FunPtr GLFWErrorFun)
+foreign import ccall "glfwSetErrorCallback" glfwSetErrorCallback :: FunPtr GLFWErrorFun -> IO (FunPtr GLFWErrorFun)
 
-foreign import ccall "GLFW/glfw3.h glfwGetError" glfwGetError :: Ptr CString -> IO CInt
+foreign import ccall "glfwGetError" glfwGetError :: Ptr CString -> IO CInt
 
 foreign import ccall "wrapper" mkGLFWErrorFun :: GLFWErrorFun -> IO (FunPtr GLFWErrorFun)
 
-foreign import ccall "GLFW/glfw3.h glfwInit" glfwInit :: IO CInt
+foreign import ccall "glfwInit" glfwInit :: IO CInt
 
-foreign import ccall "GLFW/glfw3.h glfwTerminate" terminate :: IO ()
+foreign import ccall "glfwTerminate" terminate :: IO ()
 
-foreign import ccall "GLFW/glfw3.h glfwWindowHint" glfwWindowHint :: CInt -> CInt -> IO ()
+foreign import ccall "glfwWindowHint" glfwWindowHint :: CInt -> CInt -> IO ()
 
-foreign import ccall "GLFW/glfw3.h glfwCreateWindow"
+foreign import ccall "glfwCreateWindow"
   glfwCreateWindow :: CInt -> CInt -> CString -> GLFWMonitor -> GLFWWindow -> IO GLFWWindow
 
-foreign import ccall "GLFW/glfw3.h glfwDestroyWindow" glfwDestroyWindow :: GLFWWindow -> IO ()
+foreign import ccall "glfwDestroyWindow" glfwDestroyWindow :: GLFWWindow -> IO ()
 
-foreign import ccall "GLFW/glfw3.h glfwSetFramebufferSizeCallback"
+foreign import ccall "glfwSetFramebufferSizeCallback"
   glfwSetFramebufferSizeCallback :: GLFWWindow -> FunPtr GLFWFramebufferResizeFun -> IO (FunPtr GLFWFramebufferResizeFun)
 
 foreign import ccall "wrapper"
   mkGLFWFramebufferResizeFun :: GLFWFramebufferResizeFun -> IO (FunPtr GLFWFramebufferResizeFun)
 
-foreign import ccall "GLFW/glfw3.h glfwMakeContextCurrent" glfwMakeContextCurrent :: GLFWWindow -> IO ()
+foreign import ccall "glfwMakeContextCurrent" glfwMakeContextCurrent :: GLFWWindow -> IO ()
 
-foreign import ccall "GLFW/glfw3.h glfwWindowShouldClose" glfwWindowShouldClose :: GLFWWindow -> IO CInt
+foreign import ccall "glfwWindowShouldClose" glfwWindowShouldClose :: GLFWWindow -> IO CInt
 
-foreign import ccall "GLFW/glfw3.h glfwSwapBuffers" glfwSwapBuffers :: GLFWWindow -> IO ()
+foreign import ccall "glfwSwapBuffers" glfwSwapBuffers :: GLFWWindow -> IO ()
 
-foreign import ccall "GLFW/glfw3.h glfwPollEvents" pollEvents :: IO ()
+foreign import ccall "glfwPollEvents" pollEvents :: IO ()
 
 type GLFWWindow = Ptr ()
 
@@ -60,8 +60,8 @@ type GLFWFramebufferResizeFun = GLFWWindow -> CInt -> CInt -> IO ()
 
 data Window = Window
   { windowHandle :: GLFWWindow
-  , windowWidth :: Int
-  , windowHeight :: Int
+  , windowWidth :: {-# UNPACK #-} !Int
+  , windowHeight :: {-# UNPACK #-} !Int
   }
 
 glfwTrue :: CInt
@@ -88,26 +88,31 @@ glfwOpenGLForwardCompat = 0x00022006
 glfwResizable :: CInt
 glfwResizable = 0x00020003
 
-getError :: IO (Maybe String)
+getError :: IO String
 getError = alloca $ \ptr -> do
   let noError = 0
   errorCode <- glfwGetError ptr
-  if errorCode == noError
-    then return Nothing
-    else do
+  if errorCode /= noError
+    then do
       cMessage <- peek ptr
       message <- peekCString cMessage
-      return (Just message)
+      return message
+    else return ""
 
 errorCallback :: Int -> String -> IO ()
 errorCallback = printf "GLFW Error %d: %s\n"
 
-init :: IO Bool
-init = do
+makeErrorCallbackPtr :: IO (FunPtr GLFWErrorFun)
+makeErrorCallbackPtr =
   let cErrorCallback errorCode cMessage = do
         message <- peekCString cMessage
         errorCallback (fromIntegral errorCode) message
-  funPtr <- mkGLFWErrorFun cErrorCallback
+  in
+    mkGLFWErrorFun cErrorCallback
+
+init :: IO Bool
+init = do
+  funPtr <- makeErrorCallbackPtr
   _ <- glfwSetErrorCallback funPtr
   result <- glfwInit
   return (result == glfwTrue)
@@ -116,33 +121,33 @@ framebufferResizeCallback :: Int -> Int -> IO ()
 framebufferResizeCallback newWidth newHeight = do
   GL.viewport 0 0 (fromIntegral newWidth) (fromIntegral newHeight)
 
+makeFramebufferCallbackPtr :: IO (FunPtr GLFWFramebufferResizeFun)
+makeFramebufferCallbackPtr =
+  let cFramebufferResizeCallback _ newWidth newHeight = do
+        framebufferResizeCallback (fromIntegral newWidth) (fromIntegral newHeight)
+  in
+    mkGLFWFramebufferResizeFun cFramebufferResizeCallback
+
 withWindow :: String -> Int -> Int -> (Window -> IO a) -> IO a
 withWindow title width height body =
-  withCString title $ \cTitle -> do
-    glfwWindowHint glfwResizable glfwFalse
-    glfwWindowHint glfwOpenGLProfile glfwOpenGLCoreProfile
-    glfwWindowHint glfwContextVersionMajor 3
-    glfwWindowHint glfwContextVersionMinor 3
-#ifdef darwin_HOST_OS
-    glfwWindowHint glfwOpenGLForwardCompat glfwTrue
-#endif
-    window <-
-      glfwCreateWindow
-        (fromIntegral width)
-        (fromIntegral height)
-        cTitle
-        nullPtr
-        nullPtr
+  withCString title $ \cTitle ->
+    let
+      createWindow =
+        glfwCreateWindow
+          (fromIntegral width)
+          (fromIntegral height)
+          cTitle
+          nullPtr
+          nullPtr
+    in do
+    setupWindowHints
+    window <- createWindow
     when (window == nullPtr) $ do
-      result <- getError
-      case result of
-        Just message -> error ("GLFW: Failed to create window. Message: " ++ message)
-        Nothing -> error "GLFW: Failed to create window."
+      message <- getError
+      error ("GLFW: Failed to create window. Message: " ++ message)
     glfwMakeContextCurrent window
     GL.viewport 0 0 (fromIntegral width) (fromIntegral height)
-    let cFramebufferResizeCallback _ newWidth newHeight = do
-          framebufferResizeCallback (fromIntegral newWidth) (fromIntegral newHeight)
-    funPtr <- mkGLFWFramebufferResizeFun cFramebufferResizeCallback
+    funPtr <- makeFramebufferCallbackPtr
     _ <- glfwSetFramebufferSizeCallback window funPtr
 #ifdef GL_DEBUG
     glDebugSetup
@@ -150,6 +155,16 @@ withWindow title width height body =
     result <- body Window{windowHandle = window, windowWidth = width, windowHeight = height}
     glfwDestroyWindow window
     return result
+  where
+    setupWindowHints :: IO ()
+    setupWindowHints = do
+      glfwWindowHint glfwResizable glfwFalse
+      glfwWindowHint glfwOpenGLProfile glfwOpenGLCoreProfile
+      glfwWindowHint glfwContextVersionMajor 3
+      glfwWindowHint glfwContextVersionMinor 3
+#ifdef darwin_HOST_OS
+      glfwWindowHint glfwOpenGLForwardCompat glfwTrue
+#endif
 
 windowShouldClose :: Window -> IO Bool
 windowShouldClose window = do
