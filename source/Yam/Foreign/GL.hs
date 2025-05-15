@@ -2,12 +2,29 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
 
 module Yam.Foreign.GL
-  ( colorBufferBit
+  ( GLvoid
+  , GLboolean
+  , GLbyte
+  , GLubyte
+  , GLshort
+  , GLushort
+  , GLint
+  , GLuint
+  , GLsizei
+  , GLsizeiptr
+  , GLenum
+  , GLbitfield
+  , GLfloat
+  , GLdouble
+  , colorBufferBit
   , clear
   , clearColor
   , enable
   , genTextures
   , viewport
+  , genBuffers
+  , bindBuffer
+  , bufferData
 #ifdef GL_DEBUG
   , DebugProc
   , debugOutput
@@ -18,6 +35,7 @@ module Yam.Foreign.GL
 import Foreign
 import Foreign.C
 
+type GLvoid = ()
 type GLboolean = CUChar
 type GLbyte = Int8
 type GLubyte = Word8
@@ -26,6 +44,7 @@ type GLushort = Word16
 type GLint = Int32
 type GLuint = Word32
 type GLsizei = Int32
+type GLsizeiptr = Ptr GLsizei
 type GLenum = Word32
 type GLbitfield = Word32
 type GLfloat = CFloat
@@ -39,6 +58,9 @@ foreign import ccall "glClearColor" clearColor :: GLfloat -> GLfloat -> GLfloat 
 foreign import ccall "glEnable" enable :: GLenum -> IO ()
 foreign import ccall "glGenTextures" genTextures :: GLsizei -> Ptr GLuint -> IO GLuint
 foreign import ccall "glViewport" viewport :: GLint -> GLint -> GLsizei -> GLsizei -> IO ()
+foreign import ccall "glGenBuffers" genBuffers :: GLsizei -> Ptr GLuint -> IO ()
+foreign import ccall "glBindBuffer" bindBuffer :: GLenum -> GLuint -> IO ()
+foreign import ccall "glBufferData" bufferData :: GLenum -> GLsizeiptr -> Ptr GLvoid -> GLenum -> IO ()
 
 #ifdef GL_DEBUG
 type DebugProc = GLenum -> GLenum -> GLuint -> GLenum -> GLsizei -> CString -> Ptr () -> IO ()
