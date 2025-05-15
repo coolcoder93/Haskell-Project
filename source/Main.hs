@@ -1,9 +1,17 @@
 module Main (main) where
 
 import Control.Monad
+import Foreign
+import Foreign.C
+import Foreign.Marshal.Array
 
 import qualified Yam.Foreign.GL as GL
 import qualified Yam.Foreign.GLFW as GLFW
+
+verticies :: IO (Ptr CFloat)
+verticies = newArray [-0.5, -0.5, 0.0,
+                       0.5, -0.5, 0.0,
+                       0.0,  0.5, 0.0]
 
 loop :: GLFW.Window -> IO ()
 loop window = do
