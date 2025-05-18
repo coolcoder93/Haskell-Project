@@ -59,7 +59,7 @@ library
     -- other-extensions:
 
     -- Other library packages from which modules are imported.
-    build-depends:    base ^>=4.18.0.0
+    build-depends:    base ^>=4.17.0.0
 
     pkgconfig-depends: glfw3
     frameworks: Cocoa, IOKit, OpenGL
@@ -85,7 +85,7 @@ executable Game
 
     -- Other library packages from which modules are imported.
     build-depends:
-        base ^>=4.18.0.0,
+        base ^>=4.17.0.0,
         Game
 
     -- Directories containing source files.
