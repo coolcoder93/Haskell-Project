@@ -24,6 +24,7 @@ module Yam.Foreign.GL
   , geometryShader
   , fragmentShader
   , compileStatus
+  , linkStatus
   , shaderType
   , float
   , triangles
@@ -46,6 +47,8 @@ module Yam.Foreign.GL
   , attachShader
   , linkProgram
   , useProgram
+  , getProgramiv
+  , getProgramInfoLog
   , vertexAttribPointer
   , enableVertexAttribArray
   , genVertexArrays
@@ -102,6 +105,9 @@ fragmentShader = 0x8b30
 compileStatus :: GLenum
 compileStatus = 0x8b81
 
+linkStatus :: GLenum
+linkStatus = 0x8b82
+
 shaderType :: GLenum
 shaderType = 0x8b4f
 
@@ -129,6 +135,8 @@ foreign import ccall "glCreateProgram" createProgram :: IO GLuint
 foreign import ccall "glAttachShader" attachShader :: GLuint -> GLuint -> IO ()
 foreign import ccall "glLinkProgram" linkProgram :: GLuint -> IO ()
 foreign import ccall "glUseProgram" useProgram :: GLuint -> IO ()
+foreign import ccall "glGetProgramiv" getProgramiv :: GLuint -> GLenum -> Ptr GLint -> IO ()
+foreign import ccall "glGetProgramInfoLog" getProgramInfoLog :: GLuint -> GLsizei -> Ptr GLsizei -> CString -> IO ()
 foreign import ccall "glVertexAttribPointer" vertexAttribPointer :: GLuint -> GLint -> GLenum -> GLboolean -> GLsizei -> Ptr () -> IO ()
 foreign import ccall "glEnableVertexAttribArray" enableVertexAttribArray :: GLuint -> IO ()
 foreign import ccall "glGenVertexArrays" genVertexArrays :: GLsizei -> Ptr GLuint -> IO ()

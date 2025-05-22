@@ -52,6 +52,8 @@ library
     -- Import common warning flags.
     import:           warnings
 
+    cpp-options:      -DGL_DEBUG
+
     -- Modules exported by the library.
     exposed-modules:  Yam, Yam.Foreign.GL, Yam.Foreign.GLFW
 
@@ -61,7 +63,7 @@ library
     -- Other library packages from which modules are imported.
     build-depends:    base ^>=4.17.0.0
 
-    pkgconfig-depends: glfw3
+    pkgconfig-depends: glfw3, opengl
     frameworks: Cocoa, IOKit, OpenGL
 
     -- Directories containing source files.
